@@ -5,6 +5,7 @@
 // the *figma document* via the figma global object.
 // You can access browser APIs in the <script> tag inside "ui.html" which has a
 // full browser environment (See https://www.figma.com/plugin-docs/how-plugins-run).
+//https://github.com/figma/plugin-samples/blob/master/variables-import-export/code.js
 
 let PADDING_LEFT:number = 20;let PADDING_RIGHT:number = 20;
 let PADDING_TOP:number = 20;let PADDING_BOTTOM:number = 20;
@@ -266,7 +267,6 @@ class VariablesManager {
     component.layoutSizingHorizontal = "HUG";
     component.itemSpacing = 20;
     component.paddingLeft = 5;
-    component.layoutAlign = "CENTER";
     
     const rect = figma.createRectangle()
     rect.resize(24,24);
@@ -384,7 +384,7 @@ class VariablesManager {
   async createModesHeading(modes:{modeId:string, name:string}[], parent:FrameNode) {
 
     let instance = this.modesComponent?.createInstance();
-    console.log("mode instance:", instance);
+    // console.log("mode instance:", instance);
     if(instance) {
 
       let textNode = instance.children[0] as TextNode;
@@ -401,28 +401,60 @@ class VariablesManager {
     return instance;
   }
 
-  async addVariableNameToInstance(instance:InstanceNode, variable:Variable) {
+  async createGroup(groupName:string, modes:{modeId:string, name:string}[], parent:FrameNode) {
+
+    let instance = this.modesComponent?.createInstance();
+    console.log("mode instance:", instance);
+    if(instance) {
+
+      let textNode = instance.children[0] as TextNode;
+      textNode.characters = groupName;
+
+      for(let i = 0; i < modes.length; i++) {
+        let mode = modes[i];
+        let textNode = instance.children[i + 1] as TextNode;
+        textNode.characters = "";
+      }
+      parent.appendChild(instance);
+    }
+
+    return instance;
+  }
+
+
+
+  async addVariableNameToInstance(instance:InstanceNode, variable:Variable, name:string) {
     let textNode:TextNode = instance.children[0] as TextNode;
     console.log("Variable: ", variable, variable.name);
-    textNode.characters = variable.name;
+    textNode.characters = name;
   }
 
   async appendRowForColor(variable:Variable, parent:FrameNode, variables:{[key:string]: any}) {
     
     let instance = this.colorRowsComponent?.createInstance();
-    console.log("color row instance", instance);
+    
     if(instance) {
-      this.addVariableNameToInstance(instance, variable);
+      this.addVariableNameToInstance(instance, variable, variables[variable.id].finalName );
       let index = 1;
       if(variable.valuesByMode) {
         for (const key in variable.valuesByMode) {
           if (variable.valuesByMode.hasOwnProperty(key)) {
             const value:any = variable.valuesByMode[key];
-
-            let colorNode = instance.children[index++] as InstanceNode;
-             (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: value.r, g: value.g, b: value.b} }];
-             (colorNode.children[0] as any).opacity = value.a;
-             (colorNode.children[1] as any).characters = this.rgbToHex(value).toUpperCase();
+            if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
+              let parentVariable = variables[value["id"]].variable;
+              let colorNode = instance.children[index++] as InstanceNode;
+              let newValue = parentVariable.valuesByMode[key];
+              (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: newValue.r, g: newValue.g, b: newValue.b} }];
+              (colorNode.children[0] as any).opacity = newValue.a;
+              (colorNode.children[1] as any).characters = parentVariable.name;
+            }
+            else {
+              let colorNode = instance.children[index++] as InstanceNode;
+              (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: value.r, g: value.g, b: value.b} }];
+              (colorNode.children[0] as any).opacity = value.a;
+              (colorNode.children[1] as any).characters = this.rgbToHex(value).toUpperCase();
+            }
+            
           }
         }
       }
@@ -435,7 +467,7 @@ class VariablesManager {
   async appendRowForOthers(variable:Variable, parent:FrameNode, variables:{[key:string]: any}) {
     let instance = this.rowsComponent?.createInstance();
     if(instance) {
-      this.addVariableNameToInstance(instance, variable);
+      this.addVariableNameToInstance(instance, variable, variables[variable.id].finalName);
       let index = 1;
       if(variable.valuesByMode) {
         for (const key in variable.valuesByMode) {
@@ -444,7 +476,7 @@ class VariablesManager {
             let textNode = instance.children[index++] as TextNode;
             
             if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
-              textNode.characters = variables[value.id].name;
+              textNode.characters = variables[value.id].finalName;
             }
             else if(variable.resolvedType === "FLOAT" || variable.resolvedType === "BOOLEAN" || variable.resolvedType === "STRING") {
               textNode.characters = String(value);
@@ -484,42 +516,84 @@ class VariablesManager {
     return this.createModesHeading(modes, frame);
   }
 
+  async printGroup(groupName:string, modes:{modeId:string, name:string}[], frame:FrameNode) {
+    return this.createGroup(groupName, modes, frame);
+  }
+
   async printVariable(variable:Variable, parent:FrameNode, variables: {[key:string]: any}) {
     return this.createVariableRow(variable, parent, variables);
   }
 
   async processCollection(collection: VariableCollection, count:number) {
     let variables: {[key:string]: any} = {};
-    let { name, modes, variableIds } = collection;
+    let groups: {[key:string]: Variable[]} = {};
 
+    let { name, modes, variableIds } = collection;
+    console.log("Collection: ", name, variableIds);
+    
     variableIds.forEach((variableId) => {
       let variable  = figma.variables.getVariableById(variableId);
       if(variable) {
 
-        variables[variableId] = variable;
+        let variableParts = variable.name.split("/");
+        // console.log("Variable: ", variable, "Variable Name:", variable.name, "Variable Parts:", variableParts);
+        if(variableParts.length > 1) {
+          let finalName:string = variableParts.pop() || "";
+          if(!groups[variableParts[0]]) {
+            groups[variableParts[0]] = [];
+          }
+          variables[variableId] = {variable: variable, finalName: finalName};
+
+          groups[variableParts[0]].push(variable);
+        }
+        else {
+          if(!groups["_NoGroup_"]) {
+            groups["_NoGroup_"] = []; 
+          }
+          groups["_NoGroup_"].push(variable);
+          variables[variableId] = {variable: variable, finalName: variable.name};
+        }
       }
     });
     
+    console.log("groups: ", groups);
+
     let frame               = await this.printCollection(collection, count);
     this.rowsComponent      = await this.createRowsComponent(collection.name, modes, frame, count);
     this.modesComponent     = await this.createModesComponent(collection.name, modes, frame, count);
     this.colorRowsComponent = await this.createColorRowsComponent(collection.name, modes, frame, count);
     
     await this.printModes(modes, frame);
-
-    variableIds.forEach((variableId) => {
-      let variable  = figma.variables.getVariableById(variableId);
-      if(variable) {
-
-        this.printVariable(variable, frame, variables);
-
-        variables[variableId] = variable;
-
-        const { id, name, resolvedType, valuesByMode } = variable;
-        //const value:any = valuesByMode[mode.modeId];
-        //console.log("id", id, "name:", name, "resolvedType:", resolvedType, "valuesByMode", valuesByMode);
+    
+    for(const key in groups) {
+      if (groups.hasOwnProperty(key)) {
+        const value = groups[key];
+        if(key != "_NoGroup_") {
+          let groupName = key;
+          await this.printGroup(groupName, modes, frame);
+        }
+        
+        for(let i = 0; i < value.length;i++) {
+          let variable:Variable = value[i];
+          this.printVariable(variable, frame, variables);
+        }
+        console.log(`Key: ${key}`);
+        console.log("Values:", value);
       }
-    });
+    }
+
+    // variableIds.forEach((variableId) => {
+    //   let variable  = figma.variables.getVariableById(variableId);
+    //   if(variable) {
+
+    //     this.printVariable(variable, frame, variables);
+
+    //     variables[variableId] = variable;
+
+    //     const { id, name, resolvedType, valuesByMode } = variable;
+        
+    //   }
+    // });
   }
   
   async read() {
