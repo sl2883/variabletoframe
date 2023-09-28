@@ -16,6 +16,7 @@ let FRAME_START_X: number = 1280 + 100;
 let FRAME_START_Y: number = 500;
 
 let currentY = 0;
+let baseY = 0;
 
 enum NODE_TYPE {
   COLLECTION_NODE,
@@ -159,9 +160,11 @@ class VariablesManager {
     component.name = "Mode Row Component:" + collectionName +":" + String(count);
     component.layoutMode = "HORIZONTAL";
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
     component.layoutSizingHorizontal = "HUG";
-    component.paddingTop = 20;
+    component.paddingTop = 10;
+    component.paddingBottom = 10;
     component.paddingLeft = 20;
     
     // Create a solid 1 pt border
@@ -204,10 +207,13 @@ class VariablesManager {
     const component = figma.createComponent();
     component.name = "Row Component:" + collectionName +":" + String(count);
     component.layoutMode = "HORIZONTAL";
+    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
     component.layoutSizingHorizontal = "HUG";
+    component.layoutSizingVertical = "HUG";
     component.paddingTop = 20;
+    component.paddingBottom = 20;
     component.paddingLeft = 20;
     
     // Create a solid 1 pt border
@@ -228,12 +234,15 @@ class VariablesManager {
     component.appendChild(textNode);
     textNode.characters = "Cell " + 1;
     (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
+    (component.children[0] as TextNode).layoutSizingVertical = "HUG";
+    (component.children[0] as TextNode).textAlignVertical = "CENTER";
     
     for(let i = 0; i < modes.length; i++) {
       let textNode = await this.createTextNode(modes[i].name, NODE_TYPE.VARIABLE_VALUE);
       textNode.characters = "Cell " + String(i + 2);
       component.appendChild(textNode);
       (component.children[i+1] as TextNode).layoutSizingHorizontal = "FILL";
+      (component.children[i+1] as TextNode).layoutSizingVertical = "HUG";
     }
 
     component.resize(frame.width, component.height);
@@ -256,8 +265,6 @@ class VariablesManager {
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.layoutSizingHorizontal = "HUG";
     component.itemSpacing = 20;
-    component.paddingTop = 5;
-    component.paddingBottom = 20;
     component.paddingLeft = 5;
     component.layoutAlign = "CENTER";
     
@@ -294,10 +301,12 @@ class VariablesManager {
     component.name = "Color Row Component:" + collectionName +":" + String(count);
     component.layoutMode = "HORIZONTAL";
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
     component.layoutSizingHorizontal = "HUG";
     component.layoutSizingVertical = "HUG";
     component.paddingTop = 20;
+    component.paddingBottom = 20;
     component.paddingLeft = 20;
     
     // Create a solid 1 pt border
@@ -319,7 +328,7 @@ class VariablesManager {
     textNode.characters = "Cell " + 1;
     (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
     (component.children[0] as TextNode).layoutSizingVertical = "FILL";
-    (component.children[0] as TextNode).textAlignVertical = "TOP";
+    (component.children[0] as TextNode).textAlignVertical = "CENTER";
     
     for(let i = 0; i < modes.length; i++) {
       let colorCellInstance = this.colorCellComponent?.createInstance();
@@ -351,6 +360,7 @@ class VariablesManager {
 
     frame.resize(FRAME_WIDTH, FRAME_HEIGHT);
     frame.x = FRAME_START_X + (frame.width - PADDING_LEFT - PADDING_RIGHT + 100) * count;
+    frame.y = baseY;
     frame.paddingRight = PADDING_RIGHT;
     frame.paddingTop = PADDING_TOP;
     frame.layoutSizingVertical = "HUG";
@@ -521,6 +531,9 @@ class VariablesManager {
 
     this.collectionHeadingComponent = await this.createCollectionComponent("Collection Name Component");
     this.colorCellComponent         = await this.createColorCellComponent();
+
+    currentY = figma.viewport.bounds.y;
+    baseY = figma.viewport.bounds.y;
 
     for(let i = 0; i < collections.length; i++) {
       await this.processCollection(collections[i], i);
