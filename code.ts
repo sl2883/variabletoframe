@@ -73,7 +73,7 @@ class VariablesManager {
 
    rgbToHex(value:any) {
     let { r, g, b, a } = value;
-    console.log(r, g, b, a)
+    
     if (a !== 1) {
       return `rgba(${[r, g, b]
         .map((n) => Math.round(n * 255))
@@ -116,6 +116,8 @@ class VariablesManager {
     component.name = "Collection Heading";
     let textNode = await this.createTextNode(name, NODE_TYPE.COLLECTION_NODE);
     component.appendChild(textNode);
+
+    component.y = 100 + currentY;
     currentY = component.y + component.height;
     
     return component;
@@ -125,7 +127,7 @@ class VariablesManager {
     const text = figma.createText();
 
     // Load the font in the text node before setting the characters
-    // console.log('loading font', node.fontName)
+    
     await figma.loadFontAsync({
       family: (text.fontName as FontName).family,
       style: (text.fontName as FontName).style,
@@ -170,7 +172,7 @@ class VariablesManager {
     const text = figma.createText();
 
     // Load the font in the text node before setting the characters
-    // console.log('loading font', node.fontName)
+    
     await figma.loadFontAsync({
       family: (text.fontName as FontName).family,
       style: (text.fontName as FontName).style,
@@ -194,6 +196,46 @@ class VariablesManager {
     text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
     
     return text;
+  }
+
+  async createVariableValueTextComponent() {
+    const component = figma.createComponent();
+    component.x = 0;
+    component.y = 0;
+    component.name = "Variable Value Text";
+    component.layoutMode = "HORIZONTAL";
+    let text = await this.createGenericText();
+    text.name = "Variable Value";
+    text.characters = "Variable Value"
+    text.fontSize = 24;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+
+    component.appendChild(text);
+    text.layoutSizingHorizontal = "FILL";
+    component.y = currentY;
+    currentY = component.y + component.height;
+    
+    return component;
+  }
+
+  async createVariableNameTextComponent() {
+    const component = figma.createComponent();
+    component.x = 0;
+    component.y = 0;
+    component.name = "Variable Name Text";
+    component.layoutMode = "HORIZONTAL";
+    let text = await this.createGenericText();
+    text.name = "Variable Name";
+    text.characters = "Variable Name"
+    text.fontSize = 24;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+
+    component.appendChild(text);
+    text.layoutSizingHorizontal = "FILL";
+    component.y = currentY;
+    currentY = component.y + component.height;
+    
+    return component;
   }
 
   async createGroupTextComponent() {
@@ -368,20 +410,30 @@ class VariablesManager {
     component.strokeRightWeight = 0;
     component.strokeTopWeight = 1;
 
+    if(!this.variableNameComponent) this.variableNameComponent = await this.createVariableNameTextComponent();
+    if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
 
-    let textNode = await this.createTextNode("name", NODE_TYPE.VARIABLE_NAME);
-    component.appendChild(textNode);
-    textNode.characters = "Cell " + 1;
-    (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
-    (component.children[0] as TextNode).layoutSizingVertical = "HUG";
-    (component.children[0] as TextNode).textAlignVertical = "CENTER";
+    let instance = this.variableNameComponent.createInstance();
+    component.appendChild(instance);
+
+    (instance.children[0] as TextNode).characters = "Name " + 1;
+
+    instance.layoutSizingHorizontal = "FILL";
+    instance.layoutSizingVertical = "HUG";
+    // (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
+    // (component.children[0] as TextNode).layoutSizingVertical = "HUG";
+    // (component.children[0] as TextNode).textAlignVertical = "CENTER";
     
     for(let i = 0; i < modes.length; i++) {
-      let textNode = await this.createTextNode(modes[i].name, NODE_TYPE.VARIABLE_VALUE);
-      textNode.characters = "Cell " + String(i + 2);
-      component.appendChild(textNode);
-      (component.children[i+1] as TextNode).layoutSizingHorizontal = "FILL";
-      (component.children[i+1] as TextNode).layoutSizingVertical = "HUG";
+      let instance = this.variableValueComponent.createInstance();
+      (instance.children[0] as TextNode).characters = "Value " + String(i + 2);
+      component.appendChild(instance);
+      instance.layoutSizingHorizontal = "FILL";
+      instance.layoutSizingVertical = "HUG";
+
+      // (component.children[i + 1] as TextNode).layoutSizingHorizontal = "FILL";
+      // (component.children[i + 1] as TextNode).layoutSizingVertical = "HUG";
+      // (component.children[i + 1] as TextNode).textAlignVertical = "CENTER";
     }
 
     component.resize(frame.width, component.height);
@@ -397,7 +449,7 @@ class VariablesManager {
 
     const component = figma.createComponent();
     
-    component.name = "Color Variable Row";
+    component.name = "Color Variable Cell";
     component.layoutMode = "HORIZONTAL";
     
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
@@ -422,10 +474,16 @@ class VariablesManager {
 
     component.appendChild(rect);
 
-    let textNode = await this.createTextNode("name", NODE_TYPE.VARIABLE_VALUE);
-    component.appendChild(textNode);
-    textNode.characters = "Color value";
-    (component.children[1] as TextNode).layoutSizingHorizontal = "FILL";
+    if(!this.variableNameComponent) this.variableNameComponent = await this.createVariableNameTextComponent();
+    if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
+
+    let instance = this.variableValueComponent.createInstance();
+    component.appendChild(instance);
+    instance.layoutSizingHorizontal = "FILL";
+    instance.layoutSizingVertical = "HUG";
+    
+    (instance.children[0] as TextNode).characters = "Color Value " + 1;
+    // (component.children[1] as TextNode).layoutSizingHorizontal = "FILL";
     
     component.x = 0;
     component.y = 100 + currentY;
@@ -460,13 +518,18 @@ class VariablesManager {
     component.strokeRightWeight = 0;
     component.strokeTopWeight = 1;
 
+    if(!this.variableNameComponent) this.variableNameComponent = await this.createVariableNameTextComponent();
+    if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
 
-    let textNode = await this.createTextNode("name", NODE_TYPE.VARIABLE_NAME);
-    component.appendChild(textNode);
-    textNode.characters = "Cell " + 1;
-    (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
-    (component.children[0] as TextNode).layoutSizingVertical = "FILL";
-    (component.children[0] as TextNode).textAlignVertical = "CENTER";
+    let instance = this.variableNameComponent.createInstance();
+    component.appendChild(instance);
+    instance.layoutSizingHorizontal = "FILL";
+    instance.layoutSizingVertical = "HUG";
+
+    (instance.children[0] as TextNode).characters = "Color Name " + 1;
+    // (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
+    // (component.children[0] as TextNode).layoutSizingVertical = "FILL";
+    // (component.children[0] as TextNode).textAlignVertical = "CENTER";
     
     for(let i = 0; i < modes.length; i++) {
       let colorCellInstance = this.colorCellComponent?.createInstance();
@@ -522,7 +585,7 @@ class VariablesManager {
   async createModesHeading(modes:{modeId:string, name:string}[], parent:FrameNode) {
 
     let instance = this.modesComponent?.createInstance();
-    // console.log("mode instance:", instance);
+    
     if(instance) {
       let modeComponent: InstanceNode = (instance.children[0] as InstanceNode);
       let textNode =modeComponent.children[0] as TextNode;
@@ -548,7 +611,6 @@ class VariablesManager {
   async createGroup(groupName:string, modes:{modeId:string, name:string}[], parent:FrameNode) {
     if(!this.groupComponent) this.groupComponent = await this.createGroupComponent(parent);
     let instance = this.groupComponent?.createInstance();
-    console.log("mode instance:", instance);
     if(instance) {
 
       let textNode = (instance.children[0] as InstanceNode).children[0] as TextNode;
@@ -567,8 +629,12 @@ class VariablesManager {
 
 
   async addVariableNameToInstance(instance:InstanceNode, variable:Variable, name:string) {
-    let textNode:TextNode = instance.children[0] as TextNode;
-    console.log("Variable: ", variable, variable.name);
+    
+
+    let textNode:TextNode = (instance.children[0] as InstanceNode).children[0] as TextNode;
+    
+    
+
     textNode.characters = name;
   }
 
@@ -577,7 +643,9 @@ class VariablesManager {
     let instance = this.colorRowsComponent?.createInstance();
     
     if(instance) {
+      
       this.addVariableNameToInstance(instance, variable, variables[variable.id].finalName );
+      
       let index = 1;
       if(variable.valuesByMode) {
         for (const key in variable.valuesByMode) {
@@ -585,17 +653,23 @@ class VariablesManager {
             const value:any = variable.valuesByMode[key];
             if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
               let parentVariable = variables[value["id"]].variable;
+              
               let colorNode = instance.children[index++] as InstanceNode;
+              
               let newValue = parentVariable.valuesByMode[key];
               (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: newValue.r, g: newValue.g, b: newValue.b} }];
               (colorNode.children[0] as any).opacity = newValue.a;
-              (colorNode.children[1] as any).characters = parentVariable.name;
+              let colorNodeTextInstance = (colorNode.children[1] as any);
+              colorNodeTextInstance.children[0].characters = parentVariable.name;
             }
             else {
+              
               let colorNode = instance.children[index++] as InstanceNode;
+              
               (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: value.r, g: value.g, b: value.b} }];
               (colorNode.children[0] as any).opacity = value.a;
-              (colorNode.children[1] as any).characters = this.rgbToHex(value).toUpperCase();
+              let colorNodeTextInstance = (colorNode.children[1] as any);
+              colorNodeTextInstance.children[0].characters = this.rgbToHex(value).toUpperCase();
             }
             
           }
@@ -616,7 +690,11 @@ class VariablesManager {
         for (const key in variable.valuesByMode) {
           if (variable.valuesByMode.hasOwnProperty(key)) {
             const value:any = variable.valuesByMode[key];
-            let textNode = instance.children[index++] as TextNode;
+            
+
+            let textInstanceNode = instance.children[index++] as InstanceNode;
+            let textNode = textInstanceNode.children[0] as TextNode;
+            
             
             if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
               textNode.characters = variables[value.id].finalName;
@@ -625,7 +703,7 @@ class VariablesManager {
               textNode.characters = String(value);
             }
             else {
-              console.log("SOMETHING WRONG: ", variable, value);
+              
             }
           }
         }
@@ -672,14 +750,14 @@ class VariablesManager {
     let groups: {[key:string]: Variable[]} = {};
 
     let { name, modes, variableIds } = collection;
-    console.log("Collection: ", name, variableIds);
+    
     
     variableIds.forEach((variableId) => {
       let variable  = figma.variables.getVariableById(variableId);
       if(variable) {
 
         let variableParts = variable.name.split("/");
-        // console.log("Variable: ", variable, "Variable Name:", variable.name, "Variable Parts:", variableParts);
+        
         if(variableParts.length > 1) {
           let finalName:string = variableParts.pop() || "";
           if(!groups[variableParts[0]]) {
@@ -699,7 +777,7 @@ class VariablesManager {
       }
     });
     
-    console.log("groups: ", groups);
+    
 
     let frame               = await this.printCollection(collection, count);
     this.rowsComponent      = await this.createRowsComponent(collection.name, modes, frame, count);
@@ -713,17 +791,17 @@ class VariablesManager {
         const value = groups[key];
         if(key != "_NoGroup_") {
           let groupName = key;
-          console.log("I'm here 1", key);
+          
           await this.printGroup(groupName, modes, frame);
         }
         
         for(let i = 0; i < value.length;i++) {
           let variable:Variable = value[i];
-          console.log("I'm here 2");
+          
           this.printVariable(variable, frame, variables);
         }
-        console.log(`Key: ${key}`);
-        console.log("Values:", value);
+        
+        
       }
     }
 
@@ -748,12 +826,15 @@ class VariablesManager {
     //const collection = figma.variables.createVariableCollection('Example Collection');
     const collections = figma.variables.getLocalVariableCollections();
 
-    this.collectionHeadingComponent = await this.createCollectionComponent("Collection Name Component");
-    this.colorCellComponent         = await this.createColorCellComponent();
-
     currentY = figma.viewport.bounds.y;
     baseY = figma.viewport.bounds.y;
 
+    this.collectionHeadingComponent   = await this.createCollectionComponent("Collection Name Component");
+    this.variableNameComponent        = await this.createVariableNameTextComponent();
+    this.variableValueComponent       = await this.createVariableValueTextComponent();
+    this.colorCellComponent           = await this.createColorCellComponent();
+    this.modeTextComponent            = await this.createModeTextComponent();
+    //this.groupComponent             = await this.createGroupComponent();
     for(let i = 0; i < collections.length; i++) {
       await this.processCollection(collections[i], i);
     }
@@ -771,7 +852,7 @@ figma.ui.onmessage = msg => {
     variablesManager.read();
   }
   else if(msg.type === 'print-node') {
-    console.log(figma.currentPage.selection[0]);
+    
   }
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will
