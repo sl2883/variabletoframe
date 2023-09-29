@@ -50,7 +50,14 @@ let FONT = {
   style: "Regular",
 }
 
+let FONT_BOLD = {
+  family: "Space Mono",
+  style: "Bold",
+}
+
 let FONT_COLOR = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
+let COLLECTION_BG_COLOR = { type: 'SOLID', color: { r:0.913, g: 0.945, b:0.949 } };
+let GROUP_BG_COLOR = { type: 'SOLID', color: { r: 0.937, g: 0.945, b: 0.90 } };
 
 let BORDER:SolidPaint = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
 
@@ -114,6 +121,7 @@ let MODES_COMPONENT_PADDING_BOTTOM = 10;
 
 // This shows the HTML page in "ui.html".
 figma.showUI(__html__);
+figma.ui.resize(300, 300);
 
 class VariablesManager {
 
@@ -223,18 +231,20 @@ class VariablesManager {
   async createCollectionComponent() {
 
     let component = this.initFigmaComponent( LOCALE.collectionHeading);
-    let textNode = await this.createGenericText(LOCALE.collectionHeading);
+    let textNode = await this.createGenericText(LOCALE.collectionHeading, FONT_BOLD);
     
     textNode.fontSize = FONT_SIZES.collection;
     component.appendChild(textNode);
     
     this.adjustComponentY(component);
     component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
-    
+
+    component.fills = [{ type: 'SOLID', color: COLLECTION_BG_COLOR.color }];
+
     return component;
   }
 
-  async createGenericText(name:string) {
+  async createGenericText(name:string, font:any = FONT) {
     const text = figma.createText();
 
     // Load the font in the text node before setting the characters
@@ -244,7 +254,7 @@ class VariablesManager {
       style: (text.fontName as FontName).style,
     });
 
-    await figma.loadFontAsync(FONT);
+    await figma.loadFontAsync(font);
 
     text.name       = name;
     text.characters = name;
@@ -252,7 +262,7 @@ class VariablesManager {
     text.fontSize = FONT_SIZES.generic;
     text.fills = [{ type: 'SOLID', color: FONT_COLOR.color }];
 
-    text.setRangeFontName(0, text.characters.length, FONT);
+    text.setRangeFontName(0, text.characters.length, font);
 
     text.textAutoResize = TEXT_AUTO_RESIZE;
     
@@ -297,7 +307,7 @@ class VariablesManager {
   async createModeTextComponent() {
     const component = this.initFigmaComponent(LOCALE.modeText)
     
-    let text = await this.createGenericText(LOCALE.modeText);
+    let text = await this.createGenericText(LOCALE.modeText, FONT_BOLD);
 
     component.appendChild(text);
     
@@ -348,7 +358,8 @@ class VariablesManager {
     instance.verticalPadding    = AUTO_LAYOUT_DEFAULT_PADDING_V;
 
     this.adjustComponentY(component);
-    
+    component.fills = [{ type: 'SOLID', color: GROUP_BG_COLOR.color }];
+
     return component;
   }
 

@@ -1,13 +1,101 @@
-<button id="create">Print</button>
-<button id="printnode">Print Node</button>
+<style>
+
+  :root {
+    --primary-color: #14DED2;
+    --primary-color-text: #333;
+    --primary-color-hover: #57f6eb;
+    --secondary-color: #ff6347;
+    --background-color: #f0f0f0;
+    --text-color: #333;
+    --bordder-color: #f0f0f0;
+    --settings-color: #f0f0f0;
+    --settings-color-text: #333;
+  }
+  
+    @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
+    .settings-description {
+      font-family: 'Roboto', sans-serif;
+      font-size: 12px;
+      text-align: left;
+      padding-right: 10px ;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-family: 'Roboto', sans-serif;
+      color: var(--text-color);
+      margin: 0px;
+   }
+
+   .plugin-container {
+    margin: 0px;
+  }
+
+  .selection-button {
+    font-family: 'Roboto', sans-serif;
+    display: block;
+    width: 100%;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    text-align: center;
+    color: var(--primary-color-text);
+    margin-bottom: 20px;
+    margin-top: 20px;
+  }
+
+  .selection-button:hover {
+    /*background-color: #e2efff; /* Change 'red' to your preferred background color */
+    background-color: var(--primary-color-hover); /* Change 'red' to your preferred background color */
+  }
+
+  .title {
+    font-family: 'Roboto', sans-serif;
+    font-size: large;
+    text-align: left;
+    font-weight: 500;
+    margin-top: 10px;
+ }
+
+ .description {
+    font-family: 'Roboto', sans-serif;
+    font-size:small;
+    text-align: left;
+    font-weight: 200;
+    margin-bottom: 10px;
+    margin-top: 10px;
+ }
+
+</style>
+<div class="plugin-container">
+  <p class="title">How it works</p>
+  <p class="description">
+    One click to get all variables in Figma frames. Share your variables like you share your designs!
+  </p>
+  <ui>
+    <li class="settings-description">
+      Go to the empty area in the page and click 'Publish Collection'
+    </li>
+    <li class="settings-description">
+      You get components & frames corresponding to your variable collections.
+    </li>
+    <li class="settings-description">
+      Modify components to change appearance of the collections.
+    </li>
+  </ui>
+  
+  
+  <button id="create" class="selection-button">Publish Collection</button>
+  
+</div>
 <script>
 
 document.getElementById('create').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'create-rectangles', count: 0} }, '*')
-}
-
-document.getElementById('printnode').onclick = () => {
-  parent.postMessage({ pluginMessage: { type: 'print-node'} }, '*')
 }
 
 </script>
