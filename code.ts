@@ -26,42 +26,41 @@ enum NODE_TYPE {
   VARIABLE_VALUE
 }
 
+let LOCALE = {
+  collectionHeading: "Collection Row Component",
+  variableName: "Variable Name Component",
+  variableValue: "Variable Value Component",
+  group: "Group Component",
+  modeText: "Mode Text"
+
+}
 
 // This shows the HTML page in "ui.html".
 figma.showUI(__html__);
 
-class Position {
-  // Properties
-  x: number;
-  y: number;
-  
-  // Constructor
-  constructor(x:number, y:number) {
-   this.x = x;
-   this.y = y;
-  }
-}
-
 class VariablesManager {
 
-  modes: {[key:string]: any};
-  collectionHeadingComponent: ComponentNode | null;
-  rowsComponent: ComponentNode | null;
-  colorRowsComponent: ComponentNode | null;
-  colorCellComponent: ComponentNode | null;
-  modeTextComponent : ComponentNode | null;
-  collectionTextComponent: ComponentNode | null;
-  variableNameComponent:ComponentNode | null;
-  variableValueComponent:ComponentNode | null;
-  modesComponent: ComponentNode | null;
-  groupComponent: ComponentNode | null;
+  modes                     : {[key:string]: any};
 
+  variableNameComponent     : ComponentNode | null;
+  variableValueComponent    : ComponentNode | null;
+  collectionTextComponent   : ComponentNode | null;
+  modeTextComponent         : ComponentNode | null;
+  groupNameComponent        : ComponentNode | null;
+
+  collectionRowComponent    : ComponentNode | null;
+  genericRowComponent       : ComponentNode | null;
+  colorRowComponent         : ComponentNode | null;
+  colorCellComponent        : ComponentNode | null;
+  
+  modesRowComponent         : ComponentNode | null;
+  
   constructor() {
-    this.collectionHeadingComponent = null;
-    this.rowsComponent = null;
-    this.modesComponent = null;
-    this.groupComponent = null;
-    this.colorRowsComponent = null;
+    this.collectionRowComponent = null;
+    this.genericRowComponent = null;
+    this.modesRowComponent = null;
+    this.groupNameComponent = null;
+    this.colorRowComponent = null;
     this.colorCellComponent = null;
 
     this.modeTextComponent = null;
@@ -109,16 +108,28 @@ class VariablesManager {
     });
   }
 
-  async createCollectionComponent(name:string) {
+  adjustComponentY(component: ComponentNode) {
+    component.y = 100 + currentY;
+    currentY    = component.y + component.height;
+  }
+
+  initFigmaComponent(name:string) {
     const component = figma.createComponent();
     component.x = 0;
-    component.y = 0;
-    component.name = "Collection Heading";
-    let textNode = await this.createTextNode(name, NODE_TYPE.COLLECTION_NODE);
+    component.name = name;
+    component.layoutMode = "HORIZONTAL";
+
+    return component;
+  }
+
+  async createCollectionComponent() {
+
+    let component = this.initFigmaComponent( LOCALE.collectionHeading);
+
+    let textNode = await this.createTextNode(LOCALE.collectionHeading, NODE_TYPE.COLLECTION_NODE);
     component.appendChild(textNode);
 
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
     
     return component;
   }
@@ -168,8 +179,11 @@ class VariablesManager {
      return text;
   }
 
-  async createGenericText() {
+  async createGenericText(name:string) {
     const text = figma.createText();
+
+    text.name = name;
+    text.characters = name;
 
     // Load the font in the text node before setting the characters
     
@@ -183,7 +197,8 @@ class VariablesManager {
       style: "Regular",
     });
 
-    text.characters = " ";
+    text.fontSize = 24;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
 
     text.setRangeFontName(0, text.characters.length, {
       family: "Space Mono",
@@ -192,97 +207,62 @@ class VariablesManager {
 
     text.textAutoResize = "WIDTH_AND_HEIGHT";
     
-    text.fontSize = 30;
-    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-    
     return text;
   }
 
-  async createVariableValueTextComponent() {
-    const component = figma.createComponent();
-    component.x = 0;
-    component.y = 0;
-    component.name = "Variable Value Text";
-    component.layoutMode = "HORIZONTAL";
-    let text = await this.createGenericText();
-    text.name = "Variable Value";
-    text.characters = "Variable Value"
-    text.fontSize = 24;
-    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-
+  async createVariableComponent(name:string) {
+    const component = this.initFigmaComponent(name)
+    
+    let text = await this.createGenericText(name);
+    
     component.appendChild(text);
     text.layoutSizingHorizontal = "FILL";
-    component.y = currentY;
-    currentY = component.y + component.height;
+    
+    this.adjustComponentY(component);
     
     return component;
+  }
+
+  async createVariableValueTextComponent() {
+    return this.createVariableComponent(LOCALE.variableValue);
   }
 
   async createVariableNameTextComponent() {
-    const component = figma.createComponent();
-    component.x = 0;
-    component.y = 0;
-    component.name = "Variable Name Text";
-    component.layoutMode = "HORIZONTAL";
-    let text = await this.createGenericText();
-    text.name = "Variable Name";
-    text.characters = "Variable Name"
-    text.fontSize = 24;
-    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-
-    component.appendChild(text);
-    text.layoutSizingHorizontal = "FILL";
-    component.y = currentY;
-    currentY = component.y + component.height;
-    
-    return component;
+    return this.createVariableComponent(LOCALE.variableName);
   }
 
   async createGroupTextComponent() {
-    const component = figma.createComponent();
-    component.x = 0;
-    component.y = 0;
-    component.name = "Group Text";
-    component.layoutMode = "HORIZONTAL";
-    let text = await this.createGenericText();
-    text.name = "Group";
-    text.characters = "Group"
+    const component = this.initFigmaComponent(LOCALE.group)
+    
+    let text = await this.createGenericText(LOCALE.group);
     text.fontSize = 30;
-    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
 
     component.appendChild(text);
     
-    component.y = currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
     
     return component;
   }
 
   async createModeTextComponent() {
-    const component = figma.createComponent();
-    component.x = 0;
-    component.y = 0;
-    component.name = "Mode Text";
-    component.layoutMode = "HORIZONTAL";
-    let text = await this.createGenericText();
-    text.name = "Mode";
-    text.characters = "Text";
-    text.fontSize = 30;
-    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    const component = this.initFigmaComponent(LOCALE.modeText)
+    
+    let text = await this.createGenericText(LOCALE.modeText);
 
     component.appendChild(text);
+    
+    text.fontSize = 30;
     text.layoutSizingVertical = "HUG";
     text.layoutSizingHorizontal = "HUG";
     
     component.layoutSizingHorizontal = "HUG";
 
-    component.y = currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
     
     return component;
   }
 
-  async createGroupComponent(frame:FrameNode) {
+  async creategroupNameComponent(frame:FrameNode) {
 
     const component = figma.createComponent();
     component.name = "Group";
@@ -308,8 +288,8 @@ class VariablesManager {
     component.strokeRightWeight = 0;
     component.strokeTopWeight = 1;
 
-    if(!this.groupComponent) this.groupComponent = await this.createGroupTextComponent();
-    let instance = this.groupComponent.createInstance();
+    if(!this.groupNameComponent) this.groupNameComponent = await this.createGroupTextComponent();
+    let instance = this.groupNameComponent.createInstance();
     
     component.appendChild(instance);
     instance.layoutSizingHorizontal = "HUG";
@@ -325,7 +305,7 @@ class VariablesManager {
     return component;
   }
 
-  async createModesComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+  async createModesRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
 
     const component = figma.createComponent();
     component.name = "Modes Heading" + collectionName +":" + String(count);
@@ -383,7 +363,7 @@ class VariablesManager {
     return component;
   }
 
-  async createRowsComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+  async creategenericRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
 
     const component = figma.createComponent();
     component.name = "Generic Variable Row:" + collectionName +":" + String(count);
@@ -491,7 +471,7 @@ class VariablesManager {
     return component;
   }
 
-  async createColorRowsComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+  async createColorRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
 
     const component = figma.createComponent();
     component.name = "Color Row Component:" + collectionName +":" + String(count);
@@ -575,7 +555,7 @@ class VariablesManager {
 
   async createCollectionHeading(collection:VariableCollection, parent:FrameNode) {
 
-    let instance = this.collectionHeadingComponent?.createInstance();
+    let instance = this.collectionRowComponent?.createInstance();
     if(instance) {
       (instance.children[0] as TextNode).characters = collection.name;
       parent.appendChild(instance);
@@ -584,7 +564,7 @@ class VariablesManager {
 
   async createModesHeading(modes:{modeId:string, name:string}[], parent:FrameNode) {
 
-    let instance = this.modesComponent?.createInstance();
+    let instance = this.modesRowComponent?.createInstance();
     
     if(instance) {
       let modeComponent: InstanceNode = (instance.children[0] as InstanceNode);
@@ -609,8 +589,8 @@ class VariablesManager {
   }
 
   async createGroup(groupName:string, modes:{modeId:string, name:string}[], parent:FrameNode) {
-    if(!this.groupComponent) this.groupComponent = await this.createGroupComponent(parent);
-    let instance = this.groupComponent?.createInstance();
+    if(!this.groupNameComponent) this.groupNameComponent = await this.creategroupNameComponent(parent);
+    let instance = this.groupNameComponent?.createInstance();
     if(instance) {
 
       let textNode = (instance.children[0] as InstanceNode).children[0] as TextNode;
@@ -640,7 +620,7 @@ class VariablesManager {
 
   async appendRowForColor(variable:Variable, parent:FrameNode, variables:{[key:string]: any}) {
     
-    let instance = this.colorRowsComponent?.createInstance();
+    let instance = this.colorRowComponent?.createInstance();
     
     if(instance) {
       
@@ -682,7 +662,7 @@ class VariablesManager {
   }
 
   async appendRowForOthers(variable:Variable, parent:FrameNode, variables:{[key:string]: any}) {
-    let instance = this.rowsComponent?.createInstance();
+    let instance = this.genericRowComponent?.createInstance();
     if(instance) {
       this.addVariableNameToInstance(instance, variable, variables[variable.id].finalName);
       let index = 1;
@@ -779,10 +759,11 @@ class VariablesManager {
     
     
 
-    let frame               = await this.printCollection(collection, count);
-    this.rowsComponent      = await this.createRowsComponent(collection.name, modes, frame, count);
-    this.modesComponent     = await this.createModesComponent(collection.name, modes, frame, count);
-    this.colorRowsComponent = await this.createColorRowsComponent(collection.name, modes, frame, count);
+    let frame                     = await this.printCollection(collection, count);
+
+    this.genericRowComponent      = await this.creategenericRowComponent(collection.name, modes, frame, count);
+    this.modesRowComponent        = await this.createModesRowComponent(collection.name, modes, frame, count);
+    this.colorRowComponent        = await this.createColorRowComponent(collection.name, modes, frame, count);
     
     await this.printModes(modes, frame);
     
@@ -826,15 +807,15 @@ class VariablesManager {
     //const collection = figma.variables.createVariableCollection('Example Collection');
     const collections = figma.variables.getLocalVariableCollections();
 
-    currentY = figma.viewport.bounds.y;
-    baseY = figma.viewport.bounds.y;
+    currentY  = figma.viewport.bounds.y;
+    baseY     = figma.viewport.bounds.y;
 
-    this.collectionHeadingComponent   = await this.createCollectionComponent("Collection Name Component");
+    this.collectionRowComponent       = await this.createCollectionComponent();
     this.variableNameComponent        = await this.createVariableNameTextComponent();
     this.variableValueComponent       = await this.createVariableValueTextComponent();
     this.colorCellComponent           = await this.createColorCellComponent();
     this.modeTextComponent            = await this.createModeTextComponent();
-    //this.groupComponent             = await this.createGroupComponent();
+    //this.groupNameComponent             = await this.creategroupNameComponent();
     for(let i = 0; i < collections.length; i++) {
       await this.processCollection(collections[i], i);
     }
@@ -852,7 +833,7 @@ figma.ui.onmessage = msg => {
     variablesManager.read();
   }
   else if(msg.type === 'print-node') {
-    
+      console.log(figma.currentPage.selection);
   }
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will
