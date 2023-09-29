@@ -30,9 +30,13 @@ let LOCALE = {
   collectionHeading: "Collection Row Component",
   variableName: "Variable Name Component",
   variableValue: "Variable Value Component",
-  group: "Group Component",
-  modeText: "Mode Text"
-
+  groupRow: "Group Row Component",
+  groupText: "Group Text Component",
+  modeText: "Mode Text",
+  modeRow: "Mode Row Component",
+  genericRow: "Variable Row Component",
+  colorCell: "Color Cell Component",
+  colorRowCell: "Color Variable Row Component"
 }
 
 // This shows the HTML page in "ui.html".
@@ -46,23 +50,23 @@ class VariablesManager {
   variableValueComponent    : ComponentNode | null;
   collectionTextComponent   : ComponentNode | null;
   modeTextComponent         : ComponentNode | null;
-  groupNameComponent        : ComponentNode | null;
+  groupRowComponent        : ComponentNode | null;
 
   collectionRowComponent    : ComponentNode | null;
   genericRowComponent       : ComponentNode | null;
   colorRowComponent         : ComponentNode | null;
   colorCellComponent        : ComponentNode | null;
-  
+  groupTextComponent        :ComponentNode | null;
   modesRowComponent         : ComponentNode | null;
   
   constructor() {
     this.collectionRowComponent = null;
     this.genericRowComponent = null;
     this.modesRowComponent = null;
-    this.groupNameComponent = null;
+    this.groupRowComponent = null;
     this.colorRowComponent = null;
     this.colorCellComponent = null;
-
+    this.groupTextComponent = null;
     this.modeTextComponent = null;
     this.collectionTextComponent = null;
     this.variableNameComponent = null;
@@ -232,9 +236,9 @@ class VariablesManager {
   }
 
   async createGroupTextComponent() {
-    const component = this.initFigmaComponent(LOCALE.group)
+    const component = this.initFigmaComponent(LOCALE.groupText)
     
-    let text = await this.createGenericText(LOCALE.group);
+    let text = await this.createGenericText(LOCALE.groupText);
     text.fontSize = 30;
 
     component.appendChild(text);
@@ -262,11 +266,27 @@ class VariablesManager {
     return component;
   }
 
-  async creategroupNameComponent(frame:FrameNode) {
+  applyBorder(component:ComponentNode) {
+    // Create a solid 1 pt border
+    const border: SolidPaint = {
+      type: "SOLID",
+      color: { r: 0, g: 0, b: 0 }, // RGB values for black
+    };
 
-    const component = figma.createComponent();
-    component.name = "Group";
-    component.layoutMode = "HORIZONTAL";
+    // Set the strokes property of the frame to the solid border
+    component.strokes = [border]
+    component.strokeLeftWeight = 0;
+    component.strokeBottomWeight = 0;
+    component.strokeRightWeight = 0;
+    component.strokeTopWeight = 1;
+
+    return component;
+  }
+
+  async creategroupRowComponent(frame:FrameNode) {
+
+    const component = this.initFigmaComponent(LOCALE.groupRow);
+    
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
@@ -275,21 +295,10 @@ class VariablesManager {
     component.paddingBottom = 5;
     component.paddingLeft = 20;
     
-    // Create a solid 1 pt border
-    const border: SolidPaint = {
-      type: "SOLID",
-      color: { r: 0, g: 0, b: 0 }, // RGB values for black
-    };
+    this.applyBorder(component);
 
-    // Set the strokes property of the frame to the solid border
-    component.strokes = [border]
-    component.strokeLeftWeight = 0;
-    component.strokeBottomWeight = 0;
-    component.strokeRightWeight = 0;
-    component.strokeTopWeight = 1;
-
-    if(!this.groupNameComponent) this.groupNameComponent = await this.createGroupTextComponent();
-    let instance = this.groupNameComponent.createInstance();
+    if(!this.groupTextComponent) this.groupTextComponent = await this.createGroupTextComponent();
+    let instance = this.groupTextComponent.createInstance();
     
     component.appendChild(instance);
     instance.layoutSizingHorizontal = "HUG";
@@ -298,44 +307,27 @@ class VariablesManager {
     
     component.resize(frame.width, component.height);
     
-    component.x = 0;
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
     
     return component;
   }
 
   async createModesRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
-
-    const component = figma.createComponent();
-    component.name = "Modes Heading" + collectionName +":" + String(count);
+    const component = this.initFigmaComponent(collectionName + ":" + LOCALE.modeRow);
     component.itemSpacing = 100;
-    
-    component.layoutMode = "HORIZONTAL";
-    
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     
     component.paddingTop = 5;
     component.paddingBottom = 5;
     
-    // Create a solid 1 pt border
-    const border: SolidPaint = {
-      type: "SOLID",
-      color: { r: 0, g: 0, b: 0 }, // RGB values for black
-    };
-
-    // Set the strokes property of the frame to the solid border
-    component.strokes = [border]
-    component.strokeLeftWeight = 0;
-    component.strokeBottomWeight = 0;
-    component.strokeRightWeight = 0;
-    component.strokeTopWeight = 1;
+    this.applyBorder(component);
 
     if(!this.modeTextComponent) this.modeTextComponent = await this.createModeTextComponent();
     let instance = this.modeTextComponent.createInstance();
     
     component.appendChild(instance);
+
     instance.layoutSizingHorizontal = "FILL";
     instance.layoutSizingVertical = "HUG";
     instance.paddingTop = 5;
@@ -356,39 +348,26 @@ class VariablesManager {
     
     component.resize(frame.width, component.height);
     
-    component.x = 0;
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
     
     return component;
   }
 
-  async creategenericRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
-
-    const component = figma.createComponent();
-    component.name = "Generic Variable Row:" + collectionName +":" + String(count);
-    component.layoutMode = "HORIZONTAL";
+  async createGenericRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+    const component = this.initFigmaComponent(collectionName + ":" + LOCALE.genericRow);
+    
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
+
     component.layoutSizingHorizontal = "HUG";
     component.layoutSizingVertical = "HUG";
+    
     component.paddingTop = 20;
     component.paddingBottom = 20;
     component.paddingLeft = 20;
     
-    // Create a solid 1 pt border
-    const border: SolidPaint = {
-      type: "SOLID",
-      color: { r: 0, g: 0, b: 0 }, // RGB values for black
-    };
-
-    // Set the strokes property of the frame to the solid border
-    component.strokes = [border]
-    component.strokeLeftWeight = 0;
-    component.strokeBottomWeight = 0;
-    component.strokeRightWeight = 0;
-    component.strokeTopWeight = 1;
+    this.applyBorder(component);
 
     if(!this.variableNameComponent) this.variableNameComponent = await this.createVariableNameTextComponent();
     if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
@@ -400,9 +379,6 @@ class VariablesManager {
 
     instance.layoutSizingHorizontal = "FILL";
     instance.layoutSizingVertical = "HUG";
-    // (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
-    // (component.children[0] as TextNode).layoutSizingVertical = "HUG";
-    // (component.children[0] as TextNode).textAlignVertical = "CENTER";
     
     for(let i = 0; i < modes.length; i++) {
       let instance = this.variableValueComponent.createInstance();
@@ -411,26 +387,18 @@ class VariablesManager {
       instance.layoutSizingHorizontal = "FILL";
       instance.layoutSizingVertical = "HUG";
 
-      // (component.children[i + 1] as TextNode).layoutSizingHorizontal = "FILL";
-      // (component.children[i + 1] as TextNode).layoutSizingVertical = "HUG";
-      // (component.children[i + 1] as TextNode).textAlignVertical = "CENTER";
     }
 
     component.resize(frame.width, component.height);
     
-    component.x = 0;
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
 
     return component;
   }
 
   async createColorCellComponent() {
 
-    const component = figma.createComponent();
-    
-    component.name = "Color Variable Cell";
-    component.layoutMode = "HORIZONTAL";
+    const component = this.initFigmaComponent(LOCALE.colorCell);
     
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
@@ -463,19 +431,16 @@ class VariablesManager {
     instance.layoutSizingVertical = "HUG";
     
     (instance.children[0] as TextNode).characters = "Color Value " + 1;
-    // (component.children[1] as TextNode).layoutSizingHorizontal = "FILL";
     
-    component.x = 0;
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    
+    this.adjustComponentY(component);
+
     return component;
   }
 
   async createColorRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
-
-    const component = figma.createComponent();
-    component.name = "Color Row Component:" + collectionName +":" + String(count);
-    component.layoutMode = "HORIZONTAL";
+    const component = this.initFigmaComponent(collectionName + ":" + LOCALE.colorRowCell);
+    
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
@@ -485,18 +450,7 @@ class VariablesManager {
     component.paddingBottom = 20;
     component.paddingLeft = 20;
     
-    // Create a solid 1 pt border
-    const border: SolidPaint = {
-      type: "SOLID",
-      color: { r: 0, g: 0, b: 0 }, // RGB values for black
-    };
-
-    // Set the strokes property of the frame to the solid border
-    component.strokes = [border]
-    component.strokeLeftWeight = 0;
-    component.strokeBottomWeight = 0;
-    component.strokeRightWeight = 0;
-    component.strokeTopWeight = 1;
+    this.applyBorder(component);
 
     if(!this.variableNameComponent) this.variableNameComponent = await this.createVariableNameTextComponent();
     if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
@@ -507,10 +461,7 @@ class VariablesManager {
     instance.layoutSizingVertical = "HUG";
 
     (instance.children[0] as TextNode).characters = "Color Name " + 1;
-    // (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
-    // (component.children[0] as TextNode).layoutSizingVertical = "FILL";
-    // (component.children[0] as TextNode).textAlignVertical = "CENTER";
-    
+   
     for(let i = 0; i < modes.length; i++) {
       let colorCellInstance = this.colorCellComponent?.createInstance();
       
@@ -524,8 +475,7 @@ class VariablesManager {
 
     component.resize(frame.width, component.height);
     
-    component.y = 100 + currentY;
-    currentY = component.y + component.height;
+    this.adjustComponentY(component);
 
     return component;
   }
@@ -589,8 +539,8 @@ class VariablesManager {
   }
 
   async createGroup(groupName:string, modes:{modeId:string, name:string}[], parent:FrameNode) {
-    if(!this.groupNameComponent) this.groupNameComponent = await this.creategroupNameComponent(parent);
-    let instance = this.groupNameComponent?.createInstance();
+    if(!this.groupRowComponent) this.groupRowComponent = await this.creategroupRowComponent(parent);
+    let instance = this.groupRowComponent?.createInstance();
     if(instance) {
 
       let textNode = (instance.children[0] as InstanceNode).children[0] as TextNode;
@@ -761,7 +711,7 @@ class VariablesManager {
 
     let frame                     = await this.printCollection(collection, count);
 
-    this.genericRowComponent      = await this.creategenericRowComponent(collection.name, modes, frame, count);
+    this.genericRowComponent      = await this.createGenericRowComponent(collection.name, modes, frame, count);
     this.modesRowComponent        = await this.createModesRowComponent(collection.name, modes, frame, count);
     this.colorRowComponent        = await this.createColorRowComponent(collection.name, modes, frame, count);
     
@@ -815,7 +765,7 @@ class VariablesManager {
     this.variableValueComponent       = await this.createVariableValueTextComponent();
     this.colorCellComponent           = await this.createColorCellComponent();
     this.modeTextComponent            = await this.createModeTextComponent();
-    //this.groupNameComponent             = await this.creategroupNameComponent();
+    //this.groupRowComponent             = await this.creategroupRowComponent();
     for(let i = 0; i < collections.length; i++) {
       await this.processCollection(collections[i], i);
     }
