@@ -49,14 +49,25 @@ class VariablesManager {
   rowsComponent: ComponentNode | null;
   colorRowsComponent: ComponentNode | null;
   colorCellComponent: ComponentNode | null;
+  modeTextComponent : ComponentNode | null;
+  collectionTextComponent: ComponentNode | null;
+  variableNameComponent:ComponentNode | null;
+  variableValueComponent:ComponentNode | null;
   modesComponent: ComponentNode | null;
+  groupComponent: ComponentNode | null;
 
   constructor() {
     this.collectionHeadingComponent = null;
     this.rowsComponent = null;
     this.modesComponent = null;
+    this.groupComponent = null;
     this.colorRowsComponent = null;
     this.colorCellComponent = null;
+
+    this.modeTextComponent = null;
+    this.collectionTextComponent = null;
+    this.variableNameComponent = null;
+    this.variableValueComponent = null;
     this.modes = {}
   }
 
@@ -102,7 +113,7 @@ class VariablesManager {
     const component = figma.createComponent();
     component.x = 0;
     component.y = 0;
-    component.name = "Collection Name";
+    component.name = "Collection Heading";
     let textNode = await this.createTextNode(name, NODE_TYPE.COLLECTION_NODE);
     component.appendChild(textNode);
     currentY = component.y + component.height;
@@ -120,7 +131,7 @@ class VariablesManager {
       style: (text.fontName as FontName).style,
     });
 
-    let mono = await figma.loadFontAsync({
+    await figma.loadFontAsync({
       family: "Space Mono",
       style: "Regular",
     });
@@ -155,17 +166,91 @@ class VariablesManager {
      return text;
   }
 
-  async createModesComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+  async createGenericText() {
+    const text = figma.createText();
+
+    // Load the font in the text node before setting the characters
+    // console.log('loading font', node.fontName)
+    await figma.loadFontAsync({
+      family: (text.fontName as FontName).family,
+      style: (text.fontName as FontName).style,
+    });
+
+    await figma.loadFontAsync({
+      family: "Space Mono",
+      style: "Regular",
+    });
+
+    text.characters = " ";
+
+    text.setRangeFontName(0, text.characters.length, {
+      family: "Space Mono",
+      style: "Regular",
+    });
+
+    text.textAutoResize = "WIDTH_AND_HEIGHT";
+    
+    text.fontSize = 30;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    
+    return text;
+  }
+
+  async createGroupTextComponent() {
+    const component = figma.createComponent();
+    component.x = 0;
+    component.y = 0;
+    component.name = "Group Text";
+    component.layoutMode = "HORIZONTAL";
+    let text = await this.createGenericText();
+    text.name = "Group";
+    text.characters = "Group"
+    text.fontSize = 30;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+
+    component.appendChild(text);
+    
+    component.y = currentY;
+    currentY = component.y + component.height;
+    
+    return component;
+  }
+
+  async createModeTextComponent() {
+    const component = figma.createComponent();
+    component.x = 0;
+    component.y = 0;
+    component.name = "Mode Text";
+    component.layoutMode = "HORIZONTAL";
+    let text = await this.createGenericText();
+    text.name = "Mode";
+    text.characters = "Text";
+    text.fontSize = 30;
+    text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+
+    component.appendChild(text);
+    text.layoutSizingVertical = "HUG";
+    text.layoutSizingHorizontal = "HUG";
+    
+    component.layoutSizingHorizontal = "HUG";
+
+    component.y = currentY;
+    currentY = component.y + component.height;
+    
+    return component;
+  }
+
+  async createGroupComponent(frame:FrameNode) {
 
     const component = figma.createComponent();
-    component.name = "Mode Row Component:" + collectionName +":" + String(count);
+    component.name = "Group";
     component.layoutMode = "HORIZONTAL";
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.itemSpacing = 100;
     component.layoutSizingHorizontal = "HUG";
-    component.paddingTop = 10;
-    component.paddingBottom = 10;
+    component.paddingTop = 5;
+    component.paddingBottom = 5;
     component.paddingLeft = 20;
     
     // Create a solid 1 pt border
@@ -181,32 +266,85 @@ class VariablesManager {
     component.strokeRightWeight = 0;
     component.strokeTopWeight = 1;
 
-
-    let textNode = await this.createTextNode("name", NODE_TYPE.MODE_NODE);
-    component.appendChild(textNode);
-    textNode.characters = "Cell " + 1;
-    (component.children[0] as TextNode).layoutSizingHorizontal = "FILL";
+    if(!this.groupComponent) this.groupComponent = await this.createGroupTextComponent();
+    let instance = this.groupComponent.createInstance();
     
-    for(let i = 0; i < modes.length; i++) {
-      let textNode = await this.createTextNode(modes[i].name, NODE_TYPE.MODE_NODE);
-      textNode.characters = "Cell " + String(i + 2);
-      component.appendChild(textNode);
-      (component.children[i+1] as TextNode).layoutSizingHorizontal = "FILL";
-    }
-
+    component.appendChild(instance);
+    instance.layoutSizingHorizontal = "HUG";
+    instance.paddingTop = 20;
+    (instance.children[0] as TextNode).characters = "Cell " + 1;
+    
     component.resize(frame.width, component.height);
     
     component.x = 0;
     component.y = 100 + currentY;
     currentY = component.y + component.height;
+    
+    return component;
+  }
 
+  async createModesComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
+
+    const component = figma.createComponent();
+    component.name = "Modes Heading" + collectionName +":" + String(count);
+    component.itemSpacing = 100;
+    
+    component.layoutMode = "HORIZONTAL";
+    
+    component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    
+    component.paddingTop = 5;
+    component.paddingBottom = 5;
+    
+    // Create a solid 1 pt border
+    const border: SolidPaint = {
+      type: "SOLID",
+      color: { r: 0, g: 0, b: 0 }, // RGB values for black
+    };
+
+    // Set the strokes property of the frame to the solid border
+    component.strokes = [border]
+    component.strokeLeftWeight = 0;
+    component.strokeBottomWeight = 0;
+    component.strokeRightWeight = 0;
+    component.strokeTopWeight = 1;
+
+    if(!this.modeTextComponent) this.modeTextComponent = await this.createModeTextComponent();
+    let instance = this.modeTextComponent.createInstance();
+    
+    component.appendChild(instance);
+    instance.layoutSizingHorizontal = "FILL";
+    instance.layoutSizingVertical = "HUG";
+    instance.paddingTop = 5;
+    instance.paddingLeft = 20;
+    
+    (instance.children[0] as TextNode).characters = "Cell " + 1;
+    
+    for(let i = 0; i < modes.length; i++) {
+      let instance = this.modeTextComponent.createInstance();
+      (instance.children[0] as TextNode).characters = "Cell " + String(i + 2);
+      component.appendChild(instance);
+      instance.layoutSizingHorizontal = "FILL";
+      instance.layoutSizingVertical = "HUG";
+      instance.paddingTop = 5;
+      instance.paddingLeft = 20;
+      
+    }
+    
+    component.resize(frame.width, component.height);
+    
+    component.x = 0;
+    component.y = 100 + currentY;
+    currentY = component.y + component.height;
+    
     return component;
   }
 
   async createRowsComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
 
     const component = figma.createComponent();
-    component.name = "Row Component:" + collectionName +":" + String(count);
+    component.name = "Generic Variable Row:" + collectionName +":" + String(count);
     component.layoutMode = "HORIZONTAL";
     component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
@@ -259,7 +397,7 @@ class VariablesManager {
 
     const component = figma.createComponent();
     
-    component.name = "Color Cell Component";
+    component.name = "Color Variable Row";
     component.layoutMode = "HORIZONTAL";
     
     component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
@@ -386,36 +524,41 @@ class VariablesManager {
     let instance = this.modesComponent?.createInstance();
     // console.log("mode instance:", instance);
     if(instance) {
-
-      let textNode = instance.children[0] as TextNode;
+      let modeComponent: InstanceNode = (instance.children[0] as InstanceNode);
+      let textNode =modeComponent.children[0] as TextNode;
       textNode.characters = "Name";
 
       for(let i = 0; i < modes.length; i++) {
         let mode = modes[i];
-        let textNode = instance.children[i + 1] as TextNode;
+        let modeComponent: InstanceNode = (instance.children[i+1] as InstanceNode);
+        let textNode = modeComponent.children[0] as TextNode;//instance.children[i + 1] as TextNode;
+        
         textNode.characters = mode.name;
       }
+
       parent.appendChild(instance);
+      instance.layoutSizingHorizontal = "FIXED";
+      instance.primaryAxisAlignItems = "CENTER";
+      instance.itemSpacing = 100;
     }
 
     return instance;
   }
 
   async createGroup(groupName:string, modes:{modeId:string, name:string}[], parent:FrameNode) {
-
-    let instance = this.modesComponent?.createInstance();
+    if(!this.groupComponent) this.groupComponent = await this.createGroupComponent(parent);
+    let instance = this.groupComponent?.createInstance();
     console.log("mode instance:", instance);
     if(instance) {
 
-      let textNode = instance.children[0] as TextNode;
+      let textNode = (instance.children[0] as InstanceNode).children[0] as TextNode;
       textNode.characters = groupName;
 
-      for(let i = 0; i < modes.length; i++) {
-        let mode = modes[i];
-        let textNode = instance.children[i + 1] as TextNode;
-        textNode.characters = "";
-      }
       parent.appendChild(instance);
+      instance.layoutSizingHorizontal = "FILL";
+      instance.layoutSizingVertical = "HUG";
+      instance.layoutAlign = "INHERIT";
+      instance.primaryAxisAlignItems = "MIN";
     }
 
     return instance;
@@ -570,11 +713,13 @@ class VariablesManager {
         const value = groups[key];
         if(key != "_NoGroup_") {
           let groupName = key;
+          console.log("I'm here 1", key);
           await this.printGroup(groupName, modes, frame);
         }
         
         for(let i = 0; i < value.length;i++) {
           let variable:Variable = value[i];
+          console.log("I'm here 2");
           this.printVariable(variable, frame, variables);
         }
         console.log(`Key: ${key}`);
@@ -624,6 +769,9 @@ figma.ui.onmessage = msg => {
   if (msg.type === 'create-rectangles') {
     let variablesManager = new VariablesManager();
     variablesManager.read();
+  }
+  else if(msg.type === 'print-node') {
+    console.log(figma.currentPage.selection[0]);
   }
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will

@@ -1,8 +1,13 @@
 <button id="create">Print</button>
+<button id="printnode">Print Node</button>
 <script>
 
 document.getElementById('create').onclick = () => {
   parent.postMessage({ pluginMessage: { type: 'create-rectangles', count: 0} }, '*')
+}
+
+document.getElementById('printnode').onclick = () => {
+  parent.postMessage({ pluginMessage: { type: 'print-node'} }, '*')
 }
 
 </script>
