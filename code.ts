@@ -21,6 +21,7 @@ let FRAME_START_Y: number = 500;
 let currentY = 0;
 let baseY    = 0;
 
+let COLOR_CELL_DEFAULT_SPACING = 20;
 let COMPONENTS_SPACING = 100;
 let COMPONENTS_X = 0;
 
@@ -53,6 +54,8 @@ let FONT_COLOR = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
 
 let BORDER:SolidPaint = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
 
+let RECT_COLOR:SolidPaint = { type: 'SOLID', color: { r: 1, g: 0, b: 0 } };
+
 let TEXT_AUTO_RESIZE:"WIDTH_AND_HEIGHT" | "NONE" | "HEIGHT" | "TRUNCATE" = "WIDTH_AND_HEIGHT";
 
 let FONT_SIZES = {
@@ -62,11 +65,16 @@ let FONT_SIZES = {
 
 let LAYOUT_SIZING_FILL:"FIXED" | "HUG" | "FILL" = "FILL";
 let LAYOUT_SIZING_HUG:"FIXED" | "HUG" | "FILL" = "HUG";
+let LAYOUT_SIZING_FIXED:"FIXED" | "HUG" | "FILL" = "HUG";
 
 let LAYOUT_MODE_H:"NONE" | "HORIZONTAL" | "VERTICAL" = "HORIZONTAL";
+let LAYOUT_MODE_V:"NONE" | "HORIZONTAL" | "VERTICAL" = "VERTICAL";
 
 let PRIMARY_AXIS_ALIGN_ITEMS_CENTER:"MIN" | "MAX" | "CENTER" | "SPACE_BETWEEN" = "CENTER";
 let COUNTER_AXIS_ALIGN_ITEMS_CENTER:"MIN" | "MAX" | "CENTER" | "BASELINE" = "CENTER";
+
+let LAYOUT_ALIGN_INHERIT:"MIN" | "MAX" | "CENTER" | "STRETCH" | "INHERIT" = "INHERIT";
+
 let MIN_COMPONENT_SIZE = {
   w: 400,
   h: 100
@@ -77,6 +85,8 @@ let DEFAULT_TEXT_PREFIX = {
   modesRow: "Mode ",
   variableName: "Name ",
   variableValue: "Value ",
+  colorValue: "Hex ",
+  modeName: "Name "
 }
 
 let AUTO_LAYOUT_DEFAULT_PADDING_H = 20;
@@ -92,6 +102,15 @@ let COMPONENT_ITEM_SPACING_DEFAULT = 100;
 let GENERIC_ROW_PADDING_TOP = 20;
 let GENERIC_ROW_PADDING_BOTTOM = 20;
 let GENERIC_ROW_PADDING_LEFT = 20;
+
+let COLOR_ROW_COMP_VERTICAL_PADDING = 20;
+let COLOR_ROW_COMP_HORIZONTAL_PADDING = 20;
+
+let COLLECTION_COMPONENT_PADDING_TOP = 20;
+
+let MODES_COMPONENT_ITEM_SPACING = 100;
+let MODES_COMPONENT_PADDING_TOP = 10;
+let MODES_COMPONENT_PADDING_BOTTOM = 10;
 
 // This shows the HTML page in "ui.html".
 figma.showUI(__html__);
@@ -179,6 +198,11 @@ class VariablesManager {
   fillHugLayoutSizing(component:InstanceNode | ComponentNode | TextNode) {
     component.layoutSizingHorizontal  = LAYOUT_SIZING_FILL;
     component.layoutSizingVertical    = LAYOUT_SIZING_HUG;
+  }
+
+  fillFillLayoutSizing(component:InstanceNode | ComponentNode | TextNode) {
+    component.layoutSizingHorizontal  = LAYOUT_SIZING_FILL;
+    component.layoutSizingVertical    = LAYOUT_SIZING_FILL;
   }
 
   horizontallayoutMode(component:ComponentNode) {
@@ -393,15 +417,13 @@ class VariablesManager {
 
     (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.variableName + 1;
 
-    instance.layoutSizingHorizontal = "FILL";
-    instance.layoutSizingVertical = "HUG";
+    this.fillHugLayoutSizing(instance);
     
     for(let i = 0; i < modes.length; i++) {
       let instance = this.variableValueComponent.createInstance();
-      (instance.children[0] as TextNode).characters = "Value " + String(i + 2);
+      (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.variableValue + String(i + 2);
       component.appendChild(instance);
-      instance.layoutSizingHorizontal = "FILL";
-      instance.layoutSizingVertical = "HUG";
+      this.fillHugLayoutSizing(instance);
 
     }
 
@@ -419,36 +441,27 @@ class VariablesManager {
     const rect = figma.createRectangle()
     rect.resize(24,24);
     
-    rect.fills = [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }];
-
-    // Create a solid 1 pt border
-    const border: SolidPaint = {
-      type: "SOLID",
-      color: { r: 0, g: 0, b: 0 }, // RGB values for black
-    };
-
-    // Set the strokes property of the frame to the solid border
-    rect.strokes = [border]
+    rect.fills = [RECT_COLOR];
+    rect.strokes = [BORDER]
 
     component.appendChild(rect);
 
     if(!this.variableValueComponent) this.variableValueComponent = await this.createVariableValueTextComponent();
 
     let instance = this.variableValueComponent.createInstance();
-    (instance.children[0] as TextNode).characters = "Color Value " + 1;
+    (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.colorValue + 1;
     component.appendChild(instance);
 
-    instance.layoutSizingHorizontal = "FILL";
-    instance.layoutSizingVertical = "FILL";
+    this.fillFillLayoutSizing(instance);
     
-    component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
-    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
     
-    component.resize(300, 100);
+    component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
 
-    component.layoutSizingHorizontal = "FIXED";
-    component.layoutSizingVertical = "HUG";
-    component.itemSpacing = 20;
+    component.layoutSizingHorizontal = LAYOUT_SIZING_FIXED;
+    component.layoutSizingVertical = LAYOUT_SIZING_HUG;
+
+    component.itemSpacing = COLOR_CELL_DEFAULT_SPACING;
     
     this.adjustComponentY(component);
 
@@ -458,8 +471,9 @@ class VariablesManager {
   async createColorRowComponent(collectionName:string, modes:{modeId:string, name:string}[], frame:FrameNode, count:number) {
     const component = this.initFigmaComponent(collectionName + ":" + LOCALE.colorRowCell);
     
-    component.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
-    component.counterAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    component.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
+    component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
+
     component.itemSpacing = 100;
     
     this.applyBorder(component);
@@ -469,26 +483,24 @@ class VariablesManager {
 
     let instance = this.variableNameComponent.createInstance();
     component.appendChild(instance);
-    instance.layoutSizingHorizontal = "FILL";
-    instance.layoutSizingVertical = "HUG";
+    this.fillHugLayoutSizing(instance);
     
-    (instance.children[0] as TextNode).characters = "Color Name " + 1;
+    (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.variableName + 1;
    
     for(let i = 0; i < modes.length; i++) {
       let colorCellInstance = this.colorCellComponent?.createInstance();
       
       if(colorCellInstance) {
         component.appendChild(colorCellInstance);
-        colorCellInstance.layoutSizingHorizontal = "FILL";
-        colorCellInstance.layoutAlign = "INHERIT"
-        colorCellInstance.layoutSizingVertical = "FILL"
+        this.fillFillLayoutSizing(colorCellInstance);
+        colorCellInstance.layoutAlign = LAYOUT_ALIGN_INHERIT;
       }
     }
 
     component.resize(frame.width, component.height);
     
-    component.verticalPadding = 20;
-    component.horizontalPadding = 20;
+    component.verticalPadding = COLOR_ROW_COMP_VERTICAL_PADDING;
+    component.horizontalPadding = COLOR_ROW_COMP_HORIZONTAL_PADDING;
 
     this.adjustComponentY(component);
 
@@ -501,14 +513,15 @@ class VariablesManager {
     let parent = figma.currentPage;
 
     const frame = figma.createFrame()
-    frame.layoutMode = "VERTICAL"
-    frame.primaryAxisAlignItems = "CENTER"; // Adjust alignment as needed
+    frame.layoutMode            = LAYOUT_MODE_V;
+    frame.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
 
     frame.resize(FRAME_WIDTH, FRAME_HEIGHT);
     frame.x = FRAME_START_X + (frame.width - PADDING_LEFT - PADDING_RIGHT + 100) * count;
     frame.y = baseY;
     frame.paddingTop = 0;
-    frame.layoutSizingVertical = "HUG";
+
+    frame.layoutSizingVertical = LAYOUT_SIZING_HUG;
 
     frame.name = collection.name;
 
@@ -523,9 +536,8 @@ class VariablesManager {
     if(instance) {
       (instance.children[0] as TextNode).characters = collection.name;
       parent.appendChild(instance);
-      instance.layoutSizingHorizontal = "FILL";
-      
-      instance.paddingTop = 20;
+      instance.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
+      instance.paddingTop = COLLECTION_COMPONENT_PADDING_TOP;
     }
   }
 
@@ -536,7 +548,7 @@ class VariablesManager {
     if(instance) {
       let modeComponent: InstanceNode = (instance.children[0] as InstanceNode);
       let textNode =modeComponent.children[0] as TextNode;
-      textNode.characters = "Name";
+      textNode.characters = DEFAULT_TEXT_PREFIX.modeName;
 
       for(let i = 0; i < modes.length; i++) {
         let mode = modes[i];
@@ -547,11 +559,13 @@ class VariablesManager {
       }
 
       parent.appendChild(instance);
-      instance.layoutSizingHorizontal = "FIXED";
-      instance.primaryAxisAlignItems = "CENTER";
-      instance.itemSpacing = 100;
-      instance.paddingTop = 10;
-      instance.paddingBottom = 10;
+
+      instance.layoutSizingHorizontal = LAYOUT_SIZING_FIXED;
+      instance.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER;
+
+      instance.itemSpacing = MODES_COMPONENT_ITEM_SPACING;
+      instance.paddingTop = MODES_COMPONENT_PADDING_TOP;
+      instance.paddingBottom = MODES_COMPONENT_PADDING_BOTTOM;
     }
 
     return instance;
@@ -566,8 +580,7 @@ class VariablesManager {
       textNode.characters = groupName;
 
       parent.appendChild(instance);
-      instance.layoutSizingHorizontal = "FILL";
-      instance.layoutSizingVertical = "HUG";
+      this.fillHugLayoutSizing(instance);
     }
 
     return instance;
