@@ -55,6 +55,8 @@ let FONT_BOLD = {
   style: "Bold",
 }
 
+let frames:SceneNode[] = [];
+
 let FONT_COLOR = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
 let COLLECTION_BG_COLOR = { type: 'SOLID', color: { r:0.913, g: 0.945, b:0.949 } };
 let GROUP_BG_COLOR = { type: 'SOLID', color: { r: 0.937, g: 0.945, b: 0.90 } };
@@ -276,6 +278,7 @@ class VariablesManager {
     
     component.appendChild(text);
     text.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
+    text.layoutSizingVertical = LAYOUT_SIZING_HUG;
     
     this.adjustComponentY(component);
     component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
@@ -434,8 +437,8 @@ class VariablesManager {
       let instance = this.variableValueComponent.createInstance();
       (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.variableValue + String(i + 2);
       component.appendChild(instance);
-      this.fillHugLayoutSizing(instance);
 
+      this.fillHugLayoutSizing(instance);
     }
 
     component.resize(frame.width, component.height);
@@ -462,8 +465,10 @@ class VariablesManager {
     let instance = this.variableValueComponent.createInstance();
     (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.colorValue + 1;
     component.appendChild(instance);
+    
+    // instance.layoutSizingVertical = LAYOUT_SIZING_HUG;
 
-    this.fillFillLayoutSizing(instance);
+    this.fillHugLayoutSizing(instance);
     
     component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
     
@@ -503,7 +508,7 @@ class VariablesManager {
       
       if(colorCellInstance) {
         component.appendChild(colorCellInstance);
-        this.fillFillLayoutSizing(colorCellInstance);
+        this.fillHugLayoutSizing(colorCellInstance);
         colorCellInstance.layoutAlign = LAYOUT_ALIGN_INHERIT;
       }
     }
@@ -609,27 +614,41 @@ class VariablesManager {
     textNode.characters = name;
   }
 
+  getVariableRootNode(key: string, variable: Variable, variables: {[key:string]: any}): Variable {
+    let value:any = variable.valuesByMode[key];
+    if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
+      return this.getVariableRootNode(key, variables[value["id"]].variable, variables);
+    }
+    else {
+      return variable;
+    }
+  }
+
   async appendRowForColor(variable:Variable, parent:FrameNode, variables:{[key:string]: any}) {
     
     let instance = this.colorRowComponent?.createInstance();
     
     if(instance) {
-      
+
       this.addVariableNameToInstance(instance, variable, variables[variable.id].finalName );
-      
       let index = 1;
+
       if(variable.valuesByMode) {
         for (const key in variable.valuesByMode) {
           if (variable.valuesByMode.hasOwnProperty(key)) {
-            const value:any = variable.valuesByMode[key];
+            let value:any = variable.valuesByMode[key];
+            
             if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
-              let parentVariable = variables[value["id"]].variable;
+
+              let parentVariable  = variables[value["id"]].variable; //for name
+              let rootNode        =  this.getVariableRootNode(key, variable, variables); //for actual value
+
+              let colorNode       = instance.children[index++] as InstanceNode;
+              let newValue:any = rootNode.valuesByMode[key];
               
-              let colorNode = instance.children[index++] as InstanceNode;
-              
-              let newValue = parentVariable.valuesByMode[key];
               (colorNode.children[0] as any).fills = [{ type: 'SOLID', color: { r: newValue.r, g: newValue.g, b: newValue.b} }];
               (colorNode.children[0] as any).opacity = newValue.a;
+              
               let colorNodeTextInstance = (colorNode.children[1] as any);
               colorNodeTextInstance.children[0].characters = parentVariable.name;
             }
@@ -642,7 +661,6 @@ class VariablesManager {
               let colorNodeTextInstance = (colorNode.children[1] as any);
               colorNodeTextInstance.children[0].characters = this.rgbToHex(value).toUpperCase();
             }
-            
           }
         }
       }
@@ -668,7 +686,11 @@ class VariablesManager {
             
             
             if(value["type"] && value["type"] === "VARIABLE_ALIAS") {
-              textNode.characters = variables[value.id].finalName;
+              let parentVariable  = variables[value["id"]].variable; //for name
+              let rootNode        =  this.getVariableRootNode(key, variable, variables); //for actual value
+              let newValue:any = rootNode.valuesByMode[key];
+              textNode.characters = parentVariable.name;
+
             }
             else if(variable.resolvedType === "FLOAT" || variable.resolvedType === "BOOLEAN" || variable.resolvedType === "STRING") {
               textNode.characters = String(value);
@@ -727,16 +749,20 @@ class VariablesManager {
       let variable  = figma.variables.getVariableById(variableId);
       if(variable) {
 
+        console.log("Variable", variable);
         let variableParts = variable.name.split("/");
         
         if(variableParts.length > 1) {
           let finalName:string = variableParts.pop() || "";
           if(!groups[variableParts[0]]) {
             groups[variableParts[0]] = [];
+            console.log("Adding new group with name", variableParts[0]);
           }
+          console.log("Final name", variable, finalName);
           variables[variableId] = {variable: variable, finalName: finalName};
 
           groups[variableParts[0]].push(variable);
+          console.log("Variable going into group", variableParts[0]);
         }
         else {
           if(!groups["_NoGroup_"]) {
@@ -744,6 +770,7 @@ class VariablesManager {
           }
           groups["_NoGroup_"].push(variable);
           variables[variableId] = {variable: variable, finalName: variable.name};
+          console.log("Variable Going into no group", variable, variable.name);
         }
       }
     });
@@ -751,6 +778,7 @@ class VariablesManager {
     
 
     let frame                     = await this.printCollection(collection, count);
+    frames.push(frame);
 
     this.genericRowComponent      = await this.createGenericRowComponent(collection.name, modes, frame, count);
     this.modesRowComponent        = await this.createModesRowComponent(collection.name, modes, frame, count);
@@ -767,6 +795,9 @@ class VariablesManager {
           await this.printGroup(groupName, modes, frame);
         }
         
+        else {
+          await this.printGroup("", modes, frame);
+        }
         for(let i = 0; i < value.length;i++) {
           let variable:Variable = value[i];
           
@@ -812,6 +843,15 @@ class VariablesManager {
     for(let i = 0; i < collections.length; i++) {
       await this.processCollection(collections[i], i);
     }
+
+    
+      // Set the duplicated nodes as the new selection
+    figma.currentPage.selection = frames;
+
+    // Zoom into the new selection
+    figma.viewport.scrollAndZoomIntoView(frames);
+
+    figma.closePlugin();
   }
 }
 
@@ -828,6 +868,8 @@ figma.ui.onmessage = msg => {
   else if(msg.type === 'print-node') {
       console.log(figma.currentPage.selection);
   }
+
+
 
   // Make sure to close the plugin when you're done. Otherwise the plugin will
   // keep running, which shows the cancel button at the bottom of the screen.
