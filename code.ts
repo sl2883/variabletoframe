@@ -8,10 +8,7 @@
 //https://github.com/figma/plugin-samples/blob/master/variables-import-export/code.js
 
 let PADDING_LEFT: number = 20;
-let PADDING_RIGHT: number = 20;
 let PADDING_TOP: number = 20;
-let PADDING_BOTTOM: number = 20;
-
 let FRAME_WIDTH: number = 1280;
 let FRAME_HEIGHT: number = 720;
 
@@ -23,6 +20,8 @@ let baseY = 0;
 
 let COLOR_CELL_DEFAULT_SPACING = 20;
 let COMPONENTS_SPACING = 100;
+let MAIN_FRAME_COMPONENTS_SPACING = 40;
+
 let COMPONENTS_X = 0;
 
 enum NODE_TYPE {
@@ -38,7 +37,7 @@ let LOCALE = {
   variableValue: "Variable Value Component",
   groupRow: "Group Row Component",
   groupText: "Group Text Component",
-  modeText: "Mode Text",
+  modeText: "Mode Text Component",
   modeRow: "Mode Row Component",
   genericRow: "Variable Row Component",
   colorCell: "Color Cell Component",
@@ -55,6 +54,8 @@ let FONT_BOLD = {
   style: "Bold",
 }
 
+
+let BASE_COMPONENTS = "Base Components";
 let FONT_COLOR = { type: 'SOLID', color: { r: 0, g: 0, b: 0 } };
 let COLLECTION_BG_COLOR = { type: 'SOLID', color: { r: 0.913, g: 0.945, b: 0.949 } };
 let GROUP_BG_COLOR = { type: 'SOLID', color: { r: 0.937, g: 0.945, b: 0.90 } };
@@ -96,28 +97,7 @@ let DEFAULT_TEXT_PREFIX = {
   modeName: "Name "
 }
 
-let AUTO_LAYOUT_DEFAULT_PADDING_H = 20;
-let AUTO_LAYOUT_DEFAULT_PADDING_V = 20;
-
-let MODES_PADDING_TOP = 5;
-let MODES_PADDING_BOTTOM = 5;
-let MODES_TEXT_PADDING_TOP = 5;
-let MODES_TEXT_PADDING_LEFT = 20;
-
-let COMPONENT_ITEM_SPACING_DEFAULT = 100;
-
-let GENERIC_ROW_PADDING_TOP = 20;
-let GENERIC_ROW_PADDING_BOTTOM = 20;
-let GENERIC_ROW_PADDING_LEFT = 20;
-
-let COLOR_ROW_COMP_VERTICAL_PADDING = 20;
-let COLOR_ROW_COMP_HORIZONTAL_PADDING = 20;
-
-let COLLECTION_COMPONENT_PADDING_TOP = 20;
-
 let MODES_COMPONENT_ITEM_SPACING = 100;
-let MODES_COMPONENT_PADDING_TOP = 10;
-let MODES_COMPONENT_PADDING_BOTTOM = 10;
 
 // This shows the HTML page in "ui.html".
 figma.showUI(__html__);
@@ -128,9 +108,10 @@ class VariablesManager {
   modes: { [key: string]: any };
   frames: SceneNode[];
 
+  mainFrame: FrameNode | null;
+
   variableNameComponent: ComponentNode | null;
   variableValueComponent: ComponentNode | null;
-  collectionTextComponent: ComponentNode | null;
   modeTextComponent: ComponentNode | null;
   groupRowComponent: ComponentNode | null;
 
@@ -144,8 +125,10 @@ class VariablesManager {
 
 
   constructor() {
+    
     this.frames = [];
     this.variables = {};
+    this.mainFrame = null;
     this.collectionRowComponent = null;
     this.genericRowComponent = null;
     this.modesRowComponent = null;
@@ -154,7 +137,6 @@ class VariablesManager {
     this.colorCellComponent = null;
     this.groupTextComponent = null;
     this.modeTextComponent = null;
-    this.collectionTextComponent = null;
     this.variableNameComponent = null;
     this.variableValueComponent = null;
     this.modes = {}
@@ -205,7 +187,7 @@ class VariablesManager {
     component.layoutSizingVertical = LAYOUT_SIZING_HUG;
   }
 
-  fillHugLayoutSizing(component: InstanceNode | ComponentNode | TextNode) {
+  fillHugLayoutSizing(component: InstanceNode | ComponentNode | TextNode| FrameNode) {
     component.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
     component.layoutSizingVertical = LAYOUT_SIZING_HUG;
   }
@@ -239,9 +221,49 @@ class VariablesManager {
     component.name = name;
 
     this.horizontallayoutMode(component);
-    this.hugLayoutSizing(component);
+    //this.fillHugLayoutSizing(component);
 
     return component;
+  }
+
+  
+  async createMainFrame(count:number) {
+    let parent = figma.currentPage;
+
+    const frame = figma.createFrame()
+    frame.layoutMode = LAYOUT_MODE_V;
+    frame.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
+
+    frame.resize(FRAME_WIDTH + 2 * PADDING_LEFT, FRAME_HEIGHT + 2 * PADDING_TOP);
+    frame.x = FRAME_START_X - + 2 * PADDING_LEFT + (frame.width - 2 * PADDING_LEFT + 100) * count;
+    frame.y = baseY;
+
+    frame.verticalPadding = PADDING_TOP;
+    frame.horizontalPadding = PADDING_LEFT;
+
+    frame.layoutSizingVertical = LAYOUT_SIZING_HUG;
+    frame.itemSpacing = MAIN_FRAME_COMPONENTS_SPACING;
+    frame.name = BASE_COMPONENTS;
+    parent.appendChild(frame);
+
+    return frame;
+  }
+
+  async addChildInMainFrame(child:ComponentNode) {
+    if(this.mainFrame) {
+      // console.log("child", child, "childName", child.name);
+      // let text = await this.createGenericText(child.name);
+      // text.textAlignHorizontal = "CENTER";
+      
+      // let frame = figma.createFrame();
+      // frame.appendChild(text);
+      // frame.appendChild(child);
+      
+      // frame.layoutMode = LAYOUT_MODE_V;
+      this.mainFrame.appendChild(child);
+      // this.fillHugLayoutSizing(frame);
+      // text.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
+    }
   }
 
   async createGenericText(name: string, font: any = FONT) {
@@ -279,8 +301,14 @@ class VariablesManager {
 
     this.adjustComponentY(component);
     component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
+    
+    component.verticalPadding = PADDING_TOP;
+    component.horizontalPadding = PADDING_LEFT;
 
     component.fills = [{ type: 'SOLID', color: COLLECTION_BG_COLOR.color }];
+
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
 
     return component;
   }
@@ -295,8 +323,11 @@ class VariablesManager {
     text.layoutSizingVertical = LAYOUT_SIZING_HUG;
 
     this.adjustComponentY(component);
-    component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
+    //component.resize(MIN_COMPONENT_SIZE.w, MIN_COMPONENT_SIZE.h);
 
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+    
     return component;
   }
 
@@ -318,6 +349,10 @@ class VariablesManager {
 
     this.adjustComponentY(component);
 
+
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+
     return component;
   }
 
@@ -332,10 +367,9 @@ class VariablesManager {
 
     this.hugLayoutSizing(text);
 
-    component.layoutSizingHorizontal = LAYOUT_SIZING_HUG;
-
     this.adjustComponentY(component);
-
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
     return component;
   }
 
@@ -345,7 +379,7 @@ class VariablesManager {
 
     component.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
     component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
-    component.itemSpacing = COMPONENT_ITEM_SPACING_DEFAULT;
+    component.itemSpacing = COMPONENTS_SPACING;
     component.layoutSizingHorizontal = LAYOUT_SIZING_HUG;
 
     this.applyBorder(component);
@@ -357,23 +391,30 @@ class VariablesManager {
     instance.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
     (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.groupRow + 1;
 
-    instance.horizontalPadding = AUTO_LAYOUT_DEFAULT_PADDING_H;
-    instance.verticalPadding = AUTO_LAYOUT_DEFAULT_PADDING_V;
+    component.horizontalPadding = PADDING_TOP;
+    component.verticalPadding = PADDING_LEFT;
+    
 
     this.adjustComponentY(component);
     component.fills = [{ type: 'SOLID', color: GROUP_BG_COLOR.color }];
+
+
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
 
     return component;
   }
 
   async createModesRowComponent(collectionName: string, modes: { modeId: string, name: string }[], frame: FrameNode, count: number) {
     const component = this.initFigmaComponent(collectionName + ":" + LOCALE.modeRow);
-    component.itemSpacing = 100;
+
+    component.itemSpacing = MODES_COMPONENT_ITEM_SPACING;
+
     component.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
     component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
 
-    component.paddingTop = MODES_PADDING_TOP;
-    component.paddingBottom = MODES_PADDING_BOTTOM;
+    component.verticalPadding = PADDING_TOP;
+    component.horizontalPadding = PADDING_LEFT;
 
     this.applyBorder(component);
 
@@ -384,9 +425,6 @@ class VariablesManager {
 
     this.fillHugLayoutSizing(instance);
 
-    instance.paddingTop = MODES_TEXT_PADDING_TOP;
-    instance.paddingLeft = MODES_TEXT_PADDING_LEFT;
-
     (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.modesRow + 1;
 
     for (let i = 0; i < modes.length; i++) {
@@ -395,16 +433,14 @@ class VariablesManager {
       component.appendChild(instance);
 
       this.fillHugLayoutSizing(instance);
-
-      instance.paddingTop = MODES_TEXT_PADDING_TOP;
-      instance.paddingLeft = MODES_TEXT_PADDING_LEFT;
-
     }
-
-    component.resize(frame.width, component.height);
 
     this.adjustComponentY(component);
 
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+
+    component.resize(frame.width, component.height);
     return component;
   }
 
@@ -414,13 +450,11 @@ class VariablesManager {
 
     component.counterAxisAlignItems = COUNTER_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
     component.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
-    component.itemSpacing = COMPONENT_ITEM_SPACING_DEFAULT;
+    component.itemSpacing = COMPONENTS_SPACING;
 
-    this.hugLayoutSizing(component);
 
-    component.paddingTop = GENERIC_ROW_PADDING_TOP;
-    component.paddingBottom = GENERIC_ROW_PADDING_BOTTOM;
-    component.paddingLeft = GENERIC_ROW_PADDING_LEFT;
+    component.verticalPadding = PADDING_TOP;
+    component.horizontalPadding = PADDING_LEFT;
 
     this.applyBorder(component);
 
@@ -442,9 +476,12 @@ class VariablesManager {
       this.fillHugLayoutSizing(instance);
     }
 
-    component.resize(frame.width, component.height);
-
     this.adjustComponentY(component);
+    
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+
+    component.resize(frame.width, component.height);
 
     return component;
   }
@@ -457,7 +494,7 @@ class VariablesManager {
     rect.resize(24, 24);
 
     rect.fills = [RECT_COLOR];
-    rect.strokes = [BORDER]
+    rect.strokes = [BORDER];
 
     component.appendChild(rect);
 
@@ -482,10 +519,14 @@ class VariablesManager {
 
     this.adjustComponentY(component);
 
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+
     return component;
   }
 
   async createColorRowComponent(collectionName: string, modes: { modeId: string, name: string }[], frame: FrameNode, count: number) {
+    
     const component = this.initFigmaComponent(collectionName + ":" + LOCALE.colorRowCell);
 
     component.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
@@ -500,6 +541,7 @@ class VariablesManager {
 
     let instance = this.variableNameComponent.createInstance();
     component.appendChild(instance);
+
     this.fillHugLayoutSizing(instance);
 
     (instance.children[0] as TextNode).characters = DEFAULT_TEXT_PREFIX.variableName + 1;
@@ -514,30 +556,32 @@ class VariablesManager {
       }
     }
 
-    component.resize(frame.width, component.height);
-
-    component.verticalPadding = COLOR_ROW_COMP_VERTICAL_PADDING;
-    component.horizontalPadding = COLOR_ROW_COMP_HORIZONTAL_PADDING;
+    component.verticalPadding = PADDING_TOP;
+    component.horizontalPadding = PADDING_LEFT;
 
     this.adjustComponentY(component);
 
+    await this.addChildInMainFrame(component);
+    this.fillHugLayoutSizing(component);
+
+    component.resize(frame.width, component.height);
+    
     return component;
   }
 
   async createFrame(collection: VariableCollection, count: number) {
     let parent = figma.currentPage;
 
-    const frame = figma.createFrame()
+    const frame = figma.createFrame();
     frame.layoutMode = LAYOUT_MODE_V;
     frame.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER; // Adjust alignment as needed
 
     frame.resize(FRAME_WIDTH, FRAME_HEIGHT);
-    frame.x = FRAME_START_X + (frame.width - PADDING_LEFT - PADDING_RIGHT + 100) * count;
+    frame.x = FRAME_START_X + (frame.width - 2 * PADDING_LEFT + 100) * count;
     frame.y = baseY;
     frame.paddingTop = 0;
 
     frame.layoutSizingVertical = LAYOUT_SIZING_HUG;
-
     frame.name = collection.name;
 
     parent.appendChild(frame);
@@ -552,7 +596,6 @@ class VariablesManager {
       (instance.children[0] as TextNode).characters = collection.name;
       parent.appendChild(instance);
       instance.layoutSizingHorizontal = LAYOUT_SIZING_FILL;
-      instance.paddingTop = COLLECTION_COMPONENT_PADDING_TOP;
     }
   }
 
@@ -574,13 +617,6 @@ class VariablesManager {
       }
 
       parent.appendChild(instance);
-
-      instance.layoutSizingHorizontal = LAYOUT_SIZING_FIXED;
-      instance.primaryAxisAlignItems = PRIMARY_AXIS_ALIGN_ITEMS_CENTER;
-
-      instance.itemSpacing = MODES_COMPONENT_ITEM_SPACING;
-      instance.paddingTop = MODES_COMPONENT_PADDING_TOP;
-      instance.paddingBottom = MODES_COMPONENT_PADDING_BOTTOM;
     }
 
     return instance;
@@ -819,8 +855,11 @@ class VariablesManager {
 
   // console.log("processCollection", collection.name);
   this.genericRowComponent  = await this.createGenericRowComponent(collection.name, modes, frame, count);
+
   this.modesRowComponent    = await this.createModesRowComponent(collection.name, modes, frame, count);
+
   this.colorRowComponent    = await this.createColorRowComponent(collection.name, modes, frame, count);
+  
 
   await this.printModes(modes, frame);
 
@@ -855,13 +894,17 @@ class VariablesManager {
   currentY = figma.viewport.bounds.y;
   baseY = figma.viewport.bounds.y;
 
-  this.collectionRowComponent = await this.createCollectionComponent();
-  this.variableNameComponent  = await this.createVariableNameTextComponent();
-  this.variableValueComponent = await this.createVariableValueTextComponent();
-  this.colorCellComponent     = await this.createColorCellComponent();
+  this.mainFrame = await this.createMainFrame(0);
+
+  this.collectionRowComponent = await this.createCollectionComponent(); 
   this.modeTextComponent      = await this.createModeTextComponent();
   this.groupTextComponent     = await this.createGroupTextComponent();
+  
   this.groupRowComponent      = await this.createGroupRowComponent();
+  
+  this.variableNameComponent  = await this.createVariableNameTextComponent();  
+  this.variableValueComponent = await this.createVariableValueTextComponent();
+  this.colorCellComponent     = await this.createColorCellComponent();
 
   let groupsMap: { [key: string]: any } = {}
   
@@ -871,7 +914,7 @@ class VariablesManager {
   }
 
   for (let i = 0; i < collections.length; i++) {
-    await this.processCollection(collections[i], i, groupsMap[collections[i].name]);
+    await this.processCollection(collections[i], i + 1, groupsMap[collections[i].name]);
   }
 
 
